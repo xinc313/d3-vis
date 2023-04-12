@@ -12,26 +12,11 @@
         </style>
     </head>
     <body>
-        <h3> Xin Chen, xc297 </h3>
-        <p id="p1">
-            Problem 1:
-        </p>
-
-        <ul>
-            <li>A. This is a divergent scale. It is not effective because the color in the middle is not neutral, the blue color fails to represent the midpoint. </li>
-            <li>B. This is a sequential scale. It is not effective since the the data has a midle value, neutral sentiment. So, a divergent scale is more effective in this case.</li>
-            <li>C. Tritanomaly and Tritanopia would cause a loss of the hue variation.</li>
-            <li>D. No, I wouldn't recommend the rainbow scale for countries as rainbow colors. 
-                <br> As the average life expectancy is ordered data, colors rainbow scale may have implicit categorizations and hard to judge place in scale. </li>
-        </ul>
-
         <p id="p2">
-            Problem 2:
-            <br>
-            The linear scale does a good job to shows the clusters of data. In this ncaa dataset, linear scale highlights where the most shots are attempted.
-            <br>
-            But, the logarithmic scale shows the trend of data points. The color scales helps us visualize where the most shots are attempted to where less shots are attempted. The log scale visualize the overvall shots summary better.
-            <br>
+            Processed  a public dataset of NCAA Basketball games 
+            from  the  2018-2019  and  2020-2021  seasons, I recreated  a  popular  heatmap 
+            visualization made by Max Woolf<br>
+          
             <svg id="ncaa" width=500 height=500></svg>
             <script>
                 d3.csv('NCAA_shots.csv').then((data) =>{

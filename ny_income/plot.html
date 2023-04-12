@@ -1,0 +1,91 @@
+<html>
+
+    <head>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://d3js.org/topojson.v3.min.js"></script>
+    </head>
+
+    <body>
+        <p id="p1">
+            A pan-zoom choropleth map of median family income for ZIP codes 
+            in New York state. 
+                </p>
+        <svg id="choropleth" height="770" width="990" style="margin:20px"></svg>
+        <ul id="thresholds"></ul>
+        <script>
+        const svg = d3.select("#choropleth");
+        const width = svg.attr("width");
+        const height = svg.attr("height");
+        const margin = { top: 20, right: 20, bottom: 20, left: 20 };
+        const mapWidth = width - margin.left - margin.right;
+        const mapHeight = height - margin.top - margin.bottom;
+
+        let viewport = svg.append("g");
+
+        const requestData = async function () {
+
+            const nyincome = await d3.json("ny_income.topo.json");
+
+            var zips = topojson.feature(nyincome, nyincome.objects.zip_codes)
+            var zipsMesh = topojson.mesh(nyincome, nyincome.objects.zip_codes)
+            var stateMesh = topojson.mesh(nyincome, nyincome.objects.state)
+            var projection = d3.geoMercator().fitSize([mapWidth, mapHeight], zips)
+            var path = d3.geoPath().projection(projection);
+
+            var income = d3.map(nyincome.objects.zip_codes.geometries, d => d.properties.median_income)
+
+            var colors = ["#24495c", "#1d7074", "#509474", "#a0b36b", "#ffc67c"]
+            const colorScale = d3.scaleQuantile()
+                .domain(income)
+                .range(colors);
+
+            viewport.selectAll("path.zipcode").data(zips.features)
+                .join("path")
+                .attr("class", "zipcode")
+                .attr("d", path)
+                .style("fill", d => colorScale(d.properties.median_income))
+
+            viewport.append("path").datum(zipsMesh)
+                .attr("d", path)
+                .attr("class", "zipmesh")
+                .style("stroke", "white")
+                .style("stroke-width", "1px")
+                .style("fill", "none");
+
+            viewport.append("path").datum(stateMesh)
+                .attr("d", path)
+                .attr("class", "statemesh")
+                .style("stroke", "darkgrey")
+                .style("stroke-width", "3px")
+                .style("fill", "none");
+
+            var coordinates = projection([-76.4850, 42.4476]);
+            viewport.append("circle")
+                .attr("cx", coordinates[0])
+                .attr("cy", coordinates[1])
+                .attr("r", "5");
+
+            var zoom = d3.zoom()
+                .scaleExtent([1, 10])
+                .translateExtent([[-50, -50], [mapWidth + 50, mapHeight + 50]])  // to lock to edges
+                .on("zoom", mapZoom);
+
+            viewport.call(zoom);
+
+            function mapZoom(event) {
+                viewport.attr("transform", event.transform);
+                viewport.select(".zipmesh").style("stroke-width", 1 / event.transform.k);
+            }
+
+            const thresholds = d3.select("#thresholds");
+            thresholds.selectAll("li").data(colorScale.quantiles())
+                .join("li")
+                .text(d => d.toFixed(1));
+
+        }
+        requestData()
+
+    </script>
+    </body>
+
+</html>
