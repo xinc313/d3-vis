@@ -31,16 +31,11 @@
             return "Hello" ;
             
           }
-          console.log( testFunc() );
           
         
           // 1. An async function to load data and build the map
           const requestData = async function() {
-          
-            // 2. Draw a map of US using topoJSON
-            // 2a. Import data as synchronous call to topoJSON data file
-            // Care of Mike Bostock:
-            //   "../datasets/us-smaller.json"
+
             const us = await d3.json("us-smaller.json");
             console.log(us);
           
@@ -52,12 +47,7 @@
             console.log(states);
             console.log(statesMesh);
             
-            // We tried a few different projections, including:
-            //   .geoOrthographic()  .geoStereographic()   .geoMercator()
-            
-            
-            // 2d. Add a graticule (we did this after 2c, but it must go here)
-            //      (Graticules are much more configurable, but we'll use the default for now)
+
             let graticule = d3.geoGraticule10();
             console.log(graticule);
             map.append("path").attr("class","graticule").attr("d", path(graticule));
