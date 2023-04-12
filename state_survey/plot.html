@@ -7,9 +7,8 @@
 
     <body>
         <p id="p1">
-            A pan-zoom choropleth map of median family income for ZIP codes 
-            in New York state. 
-                </p>
+ 
+        </p>
         <svg id="choropleth" height="600" width="900" style="background: #445; margin-top:50px" >
         </svg>
       
@@ -349,22 +348,7 @@
           
           
           
-        
-          <!--- calls the highlight library to fill the <pre> tag with code --->
-          <script>
-          
-          function sanitize(s) {
-            return s.replace("<br>", "\\n")
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
-                  }
-            document.getElementById("display1").innerHTML = sanitize( document.getElementById("notes1").innerText);
-            hljs.highlightAll();
-          </script>
-        
+
         
         
     </body>
