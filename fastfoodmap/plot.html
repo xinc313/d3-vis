@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <script src="https://d3js.org/topojson.v3.min.js"></script>
+        <style>
+  
+            .neighborhood {
+                fill: #EEE;
+                stroke: white;
+                stroke-width: 2px;
+            }
+            
+            .nation {
+              fill: #ddd;
+            }
+          
+            .outline {
+              stroke: #fff;
+              stroke-width: 1px;
+              fill: none;
+            }
+          
+            </style>
+    </head>
+    <body>
+        <p>Contour map:</p>
+        <svg id="fastfood" height="610" width="975" style="background: #fff;
+            margin-top:50px">
+
+        </svg>
+        <script>
+    const ffsvg = d3.select("#fastfood");
+  const ffwidth = ffsvg.attr("width");
+  const ffheight = ffsvg.attr("height");
+  const ffmapWidth = ffwidth;
+  const ffmapHeight = ffheight;
+  const ffmap = ffsvg.append("g");
+  
+  const requestDataFF = async function() {
+    
+    // We'll use the same map and projection as in the 03-26 notes
+    const us = await d3.json("counties-10m.json");
+    var projection = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
+                // NOTICE: You can customize the projection using .scale and .translate
+    var path = d3.geoPath().projection(projection);
+    var nation = topojson.feature(us, us.objects.nation);
+    var statesMesh = topojson.mesh(us, us.objects.states);
+    
+    // Draw nation and state outlines
+    ffmap.selectAll("path.nation").data(nation.features)
+         .join("path")
+         .attr("class", "nation")
+         .attr("d", path);
+     ffmap.append("path").datum(statesMesh)
+          .attr("class","outline")
+          .attr("d", path);
+    // No counties this time
+       
+
+    // Now import our fastfood dataset
+    var fastfood = await d3.csv("fastfood.csv", d3.autoType);
+    console.log(fastfood)
+   
+    fastfood.forEach( (d, i) => {
+      // Use the projection just like a scale to convert from lng/lat to pixels
+      d.position = projection( [d.longitude, d.latitude] );
+    });
+    
+    
+    let contourGen = d3.contourDensity()
+                       .x( d => d.position[0] )        // point x position (best in pixels)
+                       .y( d => d.position[1] )        // point y position (best in pixels)
+                       .size( [ffwidth, ffheight] )    // size of canvas
+                       .thresholds( 10 );              // number of "levels" you want
+    
+    let contours = contourGen(fastfood);
+    
+    console.log(contours)
+
+    let valueExtent = d3.extent(contours, d => d.value);
+    let colorScale = d3.scaleSequential(d3.interpolateViridis).domain(valueExtent)
+    
+    let layer = ffmap.append("g");
+    
+    layer.selectAll("path.contours")
+         .data(contours)
+         .join("path")
+         .attr("class", 'contours')
+         .attr("fill", d => colorScale(d.value) )
+         .attr("d", d3.geoPath())  
+           
+    ffmap.append("path").datum(statesMesh)
+         .attr("class","outline")
+         .attr("opacity", 0.5)
+         .attr("d", path);
+
+    
+    
+  }
+  requestDataFF();
+</script>
+    </body>
+</html>
