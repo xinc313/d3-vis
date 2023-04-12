@@ -1,0 +1,186 @@
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <style>
+        .gridlines line {
+            stroke: #bbb;
+            stroke-dasharray: 3, 3;
+        }
+
+        .gridlines .domain {
+            stroke: none;
+        }
+        </style>
+    </head>
+    <body>
+        <p>
+            A. 
+            <br>
+            Firtly, I found out that the price data has a dollar sign before the number. So, I convert the string price value to numerica value by removing the dollar sign.
+            The points data is also converted to numeric value to make the scatter plot.
+            <br>
+            Then, the dataset has lots of N/A's and empty values in the dataset. Filter is applied to ignore those items. Also, the wine that has a very low price and doesn't make sense is removed.
+            The rating score of the wine should also be in the range from 0 to 100, so wines that have score out of the range are filtered.
+        </p>
+        <p>
+            B.
+            <br>
+            When designing the scales for the x-axis and y-axis, I chose the log scale for price, and the power scale for points.
+            Those choices are made in order to make the data spreads out on the chart and easier to observe.
+            Specifically, the price range is from 10$ - 200$, but there are more data points when price is lower.
+            Therefore, a log scale is applied to prevent all data points clustered in a smaller part of the chart.
+            The price scale design choice has a similar rationale, so a exponent scale is used.
+            <br>
+            Besides, I use scale Ordinal here as state is a categorical data. this color scale makes us easier to see the difference. 
+        </p>
+        <p>
+            C.
+            <br>
+            The advantage of the jitter function is to prevent all the data points to stack together on a scatter plot. Jittering helps us to better visualize the data.
+            <br>
+            However, the size of the jitter needs to be clearly designed and doesn't affect much on the graph scale. If the random component is not well desiened, the jitter could disrupt the relationship between variables on the chart.
+        </p>
+        <p>
+            D.
+            <br>
+            Since there are many data points on the scatter plot, it is not visually readable for us to add label for all of them. Therefore, ths hover over tooltip helps audience to learn the details of a specific item on the plot.
+            I place the tooltip on the left corner of my plot since there are no data points there. The tooltip can be disturbing when it blocks other data points and the axes.
+        </p>
+        <svg id="wines" width="800" height="500"></svg>
+        <script>
+            d3.json('wines.json').then((data)=>{
+                console.log(data);
+                
+                data.forEach((d,i) => {
+                    d['price'] = Number(d['price'].replace('$',''));
+                    d['points'] = Number(d['points'])
+                });
+
+                data = data.filter((d) => {
+            
+                    return d['variety'] != "" && d['variety'] != "N/A"
+                        && d['region1'] != "" && d['region1'] != "N/A"
+                        && d['country'] != "" && d['country'] != "N/A"
+                        && d['price'] != 1
+                        && d['title'] != "" && d['title'] != "N/A"
+                        && d['state'] != "" && d['state'] != "N/A"
+                        && d['points'] >= 0 && d['points'] <= 100
+                        && d['winery'] != "" && d['winery'] != "N/A"
+                        && d['taster_name'] != "" && d['taster_name'] != "N/A"
+                               
+                });
+                console.log(data.length)
+
+                const svg = d3.select('svg#wines');
+                const width = svg.attr('width');
+                const height = svg.attr('height');
+                const margins = {top: 10, right: 10, bottom: 50, left: 50};
+                const chartWidth = width - margins.left - margins.right;
+                const chartHeight = height - margins.top - margins.bottom;
+
+
+                const priceExtent = d3.extent(data, d=>d['price']);
+                const priceScale = d3.scaleLog().domain(priceExtent).range([0, chartWidth]);
+
+                const pointsExtent = d3.extent(data, d=>d['points']);
+                const pointsScale = d3.scalePow().exponent(10).domain(pointsExtent).range([chartHeight, 0]).nice();
+
+                const colorScale = d3.scaleOrdinal(d3.schemeSet1);
+
+
+
+                let leftGridlines = d3.axisLeft(pointsScale)
+                    .tickSize(-chartWidth-10)
+                    .tickFormat('');
+                        
+                svg.append('g').attr('class', 'y gridlines')
+                    .attr('transform',`translate(${margins.left-10},${margins.top})`)
+                    .call(leftGridlines);
+                    
+                let bottomGridlines = d3.axisBottom(priceScale)
+                    .tickSize(-chartHeight-10)
+                    .tickFormat('');
+
+                svg.append('g').attr('class', 'x gridlines')
+                    .attr('transform',`translate(${margins.left},${chartHeight+margins.top+10})`)
+                    .call(bottomGridlines);
+
+                let chartArea = svg.append('g')
+                    .attr('transform',`translate(${margins.left},${margins.top})`);
+
+               
+
+                function jitter() {
+                    return Math.floor(Math.random() * 8 - 4);
+                }
+
+                let tooltipWidth = 450;
+                let tooltipHeight = 30;
+
+                let tooltip = svg.append("g")
+                     .attr("class","tooltip")
+                     .attr("visibility","hidden");
+
+                tooltip.append("rect")
+                    .attr("fill", "#eeeeee")
+                    .attr("width",tooltipWidth)
+                    .attr("height",tooltipHeight)
+                    .attr('transform',`translate(${margins.left},${margins.top})`);
+
+                let txt = tooltip.append("text")
+                     .attr("fill", "black")
+                     .attr("dominant-baseline", "middle")
+                     .attr("text-anchor","middle")
+                     .attr("font-size", "9px")
+                     .attr("y", tooltipHeight/2+margins.top)
+                     .attr("x", tooltipWidth/2+ margins.left);
+                     
+
+
+                data.forEach((d, i) => {
+                    chartArea.append('circle')
+                        .attr('class', 'points')
+                        .attr('cx', priceScale(d['price'])+jitter())
+                        .attr('cy', pointsScale(d['points'])+jitter())
+                        .attr('r', "3.3")
+                        .attr('opacity', 0.75)
+                        .attr('index', i)
+                        .style('fill', colorScale(d['state']))
+                        .on('mouseover', function(){
+
+                            d3.select(this).transition().attr("r", 20).attr("stroke","pink").attr("opacity", 1).style("stroke-width","3px");
+                            d3.select(this).raise();
+                            tooltip.style("visibility","visible");
+                            tooltip.style("stroke",colorScale(d['state'])).style("stroke-width","2px");
+
+                            txt.style("stroke","none");
+                            txt.text(d['title']);
+
+                        })
+                        .on('mouseout',  function(){
+
+                            d3.select(this).transition().attr("r", 3.3).attr("opacity", 0.75).attr("stroke", "none");
+
+                            tooltip.style("visibility","hidden");
+                        });
+
+                });
+
+                let leftAxis = d3.axisLeft(pointsScale).ticks(4);
+                svg.append('g')
+                    .attr('class', 'y axis')
+                    .attr('transform',`translate(${margins.left-10},${margins.top})`) 
+                    .call(leftAxis);
+
+                let bottomAxis = d3.axisBottom(priceScale).ticks(10).tickFormat(d => d + "$");
+                svg.append('g')
+                    .attr('class', 'x axis')
+                    .attr('transform',`translate(${margins.left},${chartHeight+margins.top+10})`)
+                    .call(bottomAxis);
+            
+
+            });
+        </script>
+        
+    </body>
+</html>
