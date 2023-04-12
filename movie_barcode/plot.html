@@ -1,0 +1,49 @@
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+    </head>
+    <body>
+        <p> A barcode 
+            uses vertical lines to show the average color of individual frames of a film, helping to reveal how color 
+            is  used  by  cinematographers  to  give  flavor  to  a  film.  This  has  been  a  popular  subject  of  online 
+            visualization blogs, to the extent that some have even made publicly available tools for generating 
+            them </p>
+        <div id="barcodes"></div>
+        <script>
+        const barcodes = d3.select("#barcodes").style("position", "relative");
+        // define width and height
+        const chartWidth = 800;
+        const chartHeight = 100;
+
+        const requestData = async function () {
+            const movie_bars = await d3.json("movie_barcodes.json");
+            
+            console.log(movie_bars);
+            
+            movie_bars.forEach(movie => {
+                let div = barcodes.append("div");
+
+                div.append("h5")
+                    .text(movie.title);
+
+                let canvas = div.append("canvas")
+                    .attr("width", chartWidth)
+                    .attr("height", chartHeight);
+                
+                const context = canvas.node().getContext('2d');
+                movie['bars'].forEach(bars => {
+                    let color = bars['color'];
+                    // console.log(color);
+
+                    context.strokeStyle = color;
+                    context.beginPath();
+                    context.moveTo(bars['x'] + 0.5, 0);
+                    context.lineTo(bars['x'] + 0.5, 100);
+                    context.stroke();
+                })
+            });
+        }
+        requestData();
+        </script>
+    </body>
+</html>

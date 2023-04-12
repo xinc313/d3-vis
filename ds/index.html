@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet' />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+
+<body>
+    <svg id="barchart" height="900" width="1200"> </svg>
+    <script>
+        const svg = d3.select("svg#barchart");
+        const width = svg.attr("width");
+        const height = svg.attr("height");
+        const margin = { top: 100, right: 10, bottom: 200, left: 290 };
+        const chartWidth = width - margin.left - margin.right;
+        const chartHeight = height - margin.top - margin.bottom;
+
+        let title = svg.append("g").attr("id", "title")
+            .attr("transform", `translate(${margin.left},${margin.top - 15})`);
+
+        let chartArea = svg.append("g").attr("id", "points")
+            .attr("transform", `translate(${margin.left},${margin.top})`);
+
+        let annotations = svg.append("g").attr("id", "annotations");
+
+        let legendArea = svg.append("g").attr("id", "legend")
+            .attr("transform", `translate(${margin.left + chartWidth - 350},${margin.top + chartHeight - 90})`);
+
+        title.append("text")
+            .attr("id", "graphtitle")
+            .text("Average Salary of Data Science Jobs in Large Corporations of North America (2020-2022)");
+
+        legendArea.append("rect")
+            .style("fill", "white")
+            .style("stroke", "#bbb")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("height", 80)
+            .attr("width", 340);
+
+        const logo_width = 500
+        let ds_logo = svg.append('g').attr("id", "logo")
+            .append('svg:image')
+            .attr('href', 'datascience.png')
+            .attr("width", 500)
+            .attr("transform", `translate(${margin.left + 0.8 * logo_width},${1.8 * margin.bottom})`)
+            .style("opacity", 0.8);
+        //create chart area
+
+        //read data
+        d3.csv('ds_salaries1.csv', d3.autoType).then((data) => {
+            //console.log(data);
+            //filter data to only look at Large size companies
+            const large = data.filter(d => d['company_size'] == "L");
+            // console.log(large)
+
+            //group by job titles and calculate average salary
+            const reduced = large.reduce(function (m, d) {
+                if (!m[d.job_title]) {
+                    m[d.job_title] = { ...d, count: 1 };
+                    return m;
+                }
+                m[d.job_title].salary_in_usd += d.salary_in_usd;
+                m[d.job_title].count += 1;
+                return m;
+            }, {});
+
+            // Create new array from grouped data and compute the average
+            const result = Object.keys(reduced).map(function (k) {
+                const item = reduced[k];
+                return {
+                    job_title: item.job_title,
+                    salary_in_usd: item.salary_in_usd / item.count
+                }
+            })
+
+            //sort final dataset in ascending order
+            result.sort((a, b) => d3.ascending(a['salary_in_usd'], b['salary_in_usd']))
+            // console.log(result)
+            //remove outlier data BI Data Analyst
+            const outlierRemoved = result.filter(d => d['job_title'] != "BI Data Analyst");
+
+            const titles = d3.map(outlierRemoved, d => d.job_title);
+            let uniqueTitles = titles.filter(function (elem, pos) {
+                return titles.indexOf(elem) == pos;
+            });
+            // console.log(uniqueTitles)
+
+            const titleScale = d3.scaleBand().domain(uniqueTitles).range([chartHeight, 0]).padding(0.05);
+            let leftAxis = d3.axisLeft(titleScale);
+            annotations.append("g")
+                .attr("class", "y axis")
+                .attr("transform", `translate(${margin.left - 5},${margin.top})`)
+                .call(leftAxis);
+
+            const salaryMax = d3.max(outlierRemoved, d => d['salary_in_usd'])
+            const salaryExtent = d3.extent(outlierRemoved, d => d['salary_in_usd']);
+            const salaryScale = d3.scaleLinear().domain([0, salaryMax]).range([10, chartWidth - 10]);
+
+            let bottomAxis = d3.axisBottom(salaryScale).tickFormat(d => d + "$");
+            let bottomGridlines = d3.axisBottom(salaryScale)
+                .tickSize(-chartHeight - 10)
+                .tickFormat("")
+
+            annotations.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(${margin.left},${chartHeight + margin.top + 10})`)
+                .call(bottomAxis);
+
+            annotations.append("g")
+                .attr("class", "x gridlines")
+                .attr("transform", `translate(${margin.left},${chartHeight + margin.top + 10})`)
+                .call(bottomGridlines);
+
+
+            const colorScale = d3.scaleSequential(d3.interpolateBlues).domain(salaryExtent);
+
+            chartArea.selectAll('rect.bar').data(outlierRemoved)
+                .join('rect').attr('class', 'bar')
+                .attr("fill", d => colorScale(d['salary_in_usd']))
+                .attr("x", 0)
+                .attr("y", d => titleScale(d.job_title))
+                .attr("height", d => titleScale.bandwidth())
+                .attr("width", d => salaryScale(d.salary_in_usd));
+
+
+            let defs = legendArea.append("defs")
+            let linearGradient = defs.append("linearGradient").attr("id", "linear-gradient");
+
+            linearGradient.attr("x1", "0%")
+                .attr("y1", "0%")
+                .attr("x2", "100%")
+                .attr("y2", "0%");
+
+            //Set the color for the start (0%)
+            linearGradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", d3.interpolateBlues(0)); //light blue
+
+            //Set the color for the end (100%)
+            linearGradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", d3.interpolateBlues(1)); //dark blue
+
+            legendArea.append("rect")
+                .attr("fill", "url(#linear-gradient)")
+                .attr("id", "legendbar")
+                .attr("x", 20)
+                .attr("y", 30)
+                .attr("height", 15)
+                .attr("width", 300);
+
+            let ticks = d3.scaleLinear().domain([0, salaryMax]).range([0, 300]);
+            let axis = d3.axisBottom(ticks).tickFormat(d => d + "$");
+
+            legendArea.append("g")
+                .attr("transform", `translate(${20},${50})`)
+                .call(axis.ticks(4));
+
+            legendArea.append("text")
+                .attr("x", 20)
+                .attr("y", 22)
+                .text("Salary in USD")
+                .attr("id", "legendlabel")
+
+        });
+    </script>
+    <svg id="groupedbar" height="900" width="1200"></svg>
+    <script>
+        const secondviz = d3.select("svg#groupedbar");
+
+        const vizWidth = secondviz.attr("width");
+        const vizHeight = secondviz.attr("height");
+
+        const margins = { top: 100, right: 10, bottom: 200, left: 290 };
+
+        const graphWidth = vizWidth - margins.left - margins.right;
+        const graphHeight = vizHeight - margins.top - margins.bottom;
+
+        let notes = secondviz.append("g").attr("id", "notes");
+
+        let graphArea = secondviz.append("g").attr("id", "bars")
+            .attr("transform", `translate(${margins.left},${margins.top})`);
+
+        let legend = secondviz.append("g").attr("id", "legend")
+            .attr("transform", `translate(${margins.left + graphWidth - 100},${margins.top})`);
+
+        let title2 = secondviz.append("g").attr("id", "title")
+            .attr("transform", `translate(${margins.left},${margins.top - 15})`);
+
+        title2.append("text")
+            .attr("id", "graphtitle")
+            .text("Average Salary of Difference Levels of Data Scientist in North America (2020-2022)");
+
+        legend.append("rect")
+            .style("fill", "white")
+            .style("stroke", "#bbb")
+            .attr("x", 0)
+            .attr("y", 0)
+            .attr("height", 100)
+            .attr("width", 100);
+        let map = {
+            "EX": '#00008b',
+            "SE": '#4169e1',
+            "MI": '#6495ed',
+            "EN": '#b0c4de'
+        }
+
+        //read data
+        d3.csv('ds_salaries1.csv', d3.autoType).then((data) => {
+            //console.log(data);
+            //filter data to only look at Large size companies
+            const mid = data.filter(d => d['experience_level'] == "MI");
+            const senior = data.filter(d => d['experience_level'] == "SE");
+            const entry = data.filter(d => d['experience_level'] == "EN");
+            const executive = data.filter(d => d['experience_level'] == "EX");
+
+            //group by work years and calculate average salary
+            const midOnly = mid.reduce(function (m, d) {
+                if (!m[d.work_year]) {
+                    m[d.work_year] = { ...d, count: 1 };
+                    return m;
+                }
+                m[d.work_year].salary_in_usd += d.salary_in_usd;
+                m[d.work_year].count += 1;
+                return m;
+            }, {});
+
+            // Create new array from grouped data and compute the average
+            const middata = Object.keys(midOnly).map(function (k) {
+                const item = midOnly[k];
+                return {
+                    work_year: item.work_year,
+                    salary_in_usd: item.salary_in_usd / item.count,
+                    experience_level: item.experience_level
+                }
+            })
+            //group by work years and calculate average salary
+            const seniorOnly = senior.reduce(function (m, d) {
+                if (!m[d.work_year]) {
+                    m[d.work_year] = { ...d, count: 1 };
+                    return m;
+                }
+                m[d.work_year].salary_in_usd += d.salary_in_usd;
+                m[d.work_year].count += 1;
+                return m;
+            }, {});
+
+            // Create new array from grouped data and compute the average
+            const seniordata = Object.keys(seniorOnly).map(function (k) {
+                const item = seniorOnly[k];
+                return {
+                    work_year: item.work_year,
+                    salary_in_usd: item.salary_in_usd / item.count,
+                    experience_level: item.experience_level
+                }
+            })
+
+            //group by work years and calculate average salary
+            const entryOnly = entry.reduce(function (m, d) {
+                if (!m[d.work_year]) {
+                    m[d.work_year] = { ...d, count: 1 };
+                    return m;
+                }
+                m[d.work_year].salary_in_usd += d.salary_in_usd;
+                m[d.work_year].count += 1;
+                return m;
+            }, {});
+
+            // Create new array from grouped data and compute the average
+            const entrydata = Object.keys(entryOnly).map(function (k) {
+                const item = entryOnly[k];
+                return {
+                    work_year: item.work_year,
+                    salary_in_usd: item.salary_in_usd / item.count,
+                    experience_level: item.experience_level
+                }
+            })
+
+            //group by work years and calculate average salary
+            const exOnly = executive.reduce(function (m, d) {
+                if (!m[d.work_year]) {
+                    m[d.work_year] = { ...d, count: 1 };
+                    return m;
+                }
+                m[d.work_year].salary_in_usd += d.salary_in_usd;
+                m[d.work_year].count += 1;
+                return m;
+            }, {});
+
+            // Create new array from grouped data and compute the average
+            const exdata = Object.keys(exOnly).map(function (k) {
+                const item = exOnly[k];
+                return {
+                    work_year: item.work_year,
+                    salary_in_usd: item.salary_in_usd / item.count,
+                    experience_level: item.experience_level
+                }
+            })
+
+            const years = d3.map(middata, d => d.work_year);
+
+            let subgroups = ["EX", "SE", "MI", "EN"]
+            const yearScale = d3.scaleBand().domain(years).range([0, graphWidth]).padding(0.05);
+            let bottomAxis = d3.axisBottom(yearScale);
+            notes.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(${margins.left},${graphHeight + margins.top + 10})`)
+                .call(bottomAxis);
+
+            const max = d3.max(data, d => d['salary_in_usd'])
+            const yExtent = d3.extent(data, d => d['salary_in_usd']);
+            const yScale = d3.scaleLinear().domain([0, max]).range([graphHeight, 0]);
+
+            let yAxis = d3.axisLeft(yScale).tickFormat(d => d + "$");
+            let yGridlines = d3.axisLeft(yScale)
+                .tickSize(-graphWidth - 10)
+                .tickFormat("")
+
+            notes.append("g")
+                .attr("class", "y axis")
+                .attr("transform", `translate(${margins.left - 10},${margins.top})`)
+                .call(yAxis);
+
+            notes.append("g")
+                .attr("class", "y gridlines")
+                .attr("transform", `translate(${margins.left - 10},${margins.top})`)
+                .call(yGridlines);
+
+            let xSubgroup = d3.scaleBand()
+                .domain(subgroups)
+                .range([0, yearScale.bandwidth()])
+                .padding([0.05])
+
+            let color = d3.scaleOrdinal()
+                .domain(subgroups)
+                .range(['#00008b', '#4169e1', '#6495ed', '#b0c4de'])
+
+            let newData = d3.merge([middata, seniordata, entrydata, exdata]);
+            let year2020 = [];
+            let year2021 = [];
+            let year2022 = [];
+
+            newData.forEach(element => {
+                console.log(element);
+                temp = element.experience_level;
+                element[temp] = element.salary_in_usd;
+                delete element.salary_in_usd;
+                delete element.experience_level;
+                if (element.work_year === 2020) {
+                    year2020.push(element);
+                }
+                else if (element.work_year === 2021) {
+                    year2021.push(element);
+                }
+                else {
+                    year2022.push(element);
+                }
+            });
+
+            var year1 = { work_year: 2020 };
+            var year2 = { work_year: 2021 };
+            var year3 = { work_year: 2022 };
+
+            year2020.forEach(i => { year1 = Object.assign(year1, i); })
+            year2021.forEach(i => { year2 = Object.assign(year2, i); })
+            year2022.forEach(i => { year3 = Object.assign(year3, i); })
+
+            console.log(year1);
+
+            const grouped = [year1, year2, year3];
+
+
+            graphArea.selectAll('g').data(grouped)
+                .join('g')
+                .attr("transform", function (d) { return "translate(" + yearScale(d.work_year) + ",0)"; })
+                .attr("class", "groups")
+                .selectAll('rect.bar')
+                .data(function (d) { return subgroups.map(function (key) { return { key: key, value: d[key] }; }); })
+                .join('rect').attr('class', 'bar')
+                .attr("fill", d => color(d.key))
+                .attr("x", d => xSubgroup(d.key))
+                .attr("y", d => yScale(d.value))
+                .attr("height", d => graphHeight - yScale(d.value))
+                .attr("width", d => xSubgroup.bandwidth());
+            
+            graphArea.selectAll('.groups')
+                .selectAll("text")
+                .data(function (d) { return subgroups.map(function (key) { return { key: key, value: d[key] }; }); })
+                .join("text")
+                .text(d=>d.value.toFixed(0) + "$")
+                .attr("x", d => xSubgroup(d.key) + xSubgroup.bandwidth() / 2)
+                .attr("y", d => yScale(d.value) - 8)
+                .attr("fill", d => color(d.key))
+                .attr("text-anchor", "middle")
+                .attr("font-size" , "14px");
+
+
+            let squares = legend.selectAll('rect.square').data(subgroups)
+                .attr('class', 'square')
+                .join('rect')
+                .attr('x', 15)
+                .attr('y', function (d, i) { return (15 + i * 20); })
+                .attr('width', 10)
+                .attr('height', 10)
+                .attr('fill', function (d, i) { return map[subgroups[i]]; })
+
+            legend.selectAll('.text').data(subgroups)
+                .attr('class', 'label')
+                .join("text")
+                .attr('x', 35)
+                .attr('y', function (d, i) { return (25 + i * 20); })
+                .text(function (d) { return d; })
+                .attr('fill', function (d, i) { return map[subgroups[i]]; });
+
+        });
+
+    </script>
+
+
+</body>
+
+</html>

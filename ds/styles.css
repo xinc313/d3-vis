@@ -1,0 +1,23 @@
+.gridlines line {
+    stroke: brown;
+    opacity: 0.8;
+    stroke-dasharray: 3, 3;
+}
+
+.gridlines .domain{
+    stroke: none;
+}
+
+text {
+    font-family: 'Roboto';
+}
+
+#legendlabel{
+    font-size: small;
+    font-weight: bold;
+}
+
+#graphtitle{
+    font-size: large;
+    font-weight: bold;
+}
