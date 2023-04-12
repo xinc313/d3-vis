@@ -1,0 +1,890 @@
+<html>
+  <head>
+    <!-- Import font-->
+    <link href='https://fonts.googleapis.com/css?family=Roboto' rel='stylesheet'
+      />
+
+    <!-- Import d3 -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+
+    <!-- Import d3 TopoJSON -->
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+
+    <script
+      src="https://cdnjs.cloudflare.com/ajax/libs/d3-legend/2.25.6/d3-legend.min.js"></script>
+    <!-- link to get rid of the "favicon.ico 404 (not found)" warning -->
+    <link rel="shortcut icon" href="#" />
+  </head>
+  <style>
+    #tooltipBackground {
+      width: 300;
+      opacity: 0.7;
+    }
+    .gridlines .domain {
+      display: none;
+    }
+
+    .gridlines line {
+      stroke: rgb(169, 168, 168);
+    }
+
+    .gridlines {
+      margin-bottom: 50;
+    }
+
+    html {
+        background-color: #b0e0e6;
+    }
+
+
+    /* #lineChart {
+      position: absolute;
+      top: 60%;
+    } */
+    .mainContainer {
+      height: 600;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+    }
+
+    .mapSVG {
+      display: flex;
+      width: 1000;
+      height: 600;
+      margin: 0;
+    }
+
+    .lineChartSVG {
+      display: flex;
+      width: 400;
+      height: 400;
+    }
+
+    .writtenContent {
+      display: flex;
+      flex-direction: column;
+    }
+
+    text {
+      font-size: small;
+      font-family: 'Roboto';
+    }
+    
+    .title {
+      font-size: medium;
+      font-weight: bold;
+    }
+    .selectContainer {
+      position: relative;
+      left:270px;
+    }
+    select::-ms-expand {
+      display: none;
+    }
+    select {
+      padding: 0.5em 2em 0.5em 0.5em;
+      border: 1px solid #eee;
+      font: inherit;
+      line-height: inherit;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      -ms-appearance: none;
+      appearance: none;
+      background-repeat: no-repeat;
+      background-image: linear-gradient(45deg, transparent 50%, currentColor 50%), linear-gradient(135deg, currentColor 50%, transparent 50%);
+      background-position: right 15px top 1em, right 10px top 1em;
+      background-size: 5px 5px, 5px 5px;
+    }
+
+    * {
+      font-family: 'Roboto';
+    }
+
+    label {
+      font-weight: bold;
+    }
+
+    #legendlabel{
+      font-size: medium;
+      font-weight: bold;
+    }
+
+  </style>
+  <body>
+    <div class="writtenContent">
+      <h3>Project 2: Data Visualization on GDP by country</h3>
+      <p id="p1">
+        Dana Kim (dk559), Elana Pocress (erp49), Steven Chen (sc2796), Xin Chen
+        (xc297)
+      </p>
+      <div id="des">
+        Descriptions of indices. Click on each indices to learn more about it
+        from an economic lens and its use as an indicator. Hover over any country to see individual metrics.
+        <ul>
+          <li>
+            <a href="https://www.imf.org/en/Publications/fandd/issues/Series/Back-to-Basics/gross-domestic-product-GDP">GDP (Gross Domestic Product</a>: This represents the monetary value of
+            final goods and services. 
+            
+          </li>
+          <li>
+            <a href="https://www.globalhungerindex.org/"> Global Hunger Index:</a>
+            This represents the amount of hunger in a
+            country, where 0 being no hunger and 100 being the worst score.
+          </li>
+          <li>
+            <a
+              href="https://www.who.int/news/item/19-11-2015-stunting-in-a-nutshell#:~:text=Stunting%20is%20the%20impaired%20growth,WHO%20Child%20Growth%20Standards%20median.">
+              Stunted Growth:</a> This represents the percentage of children
+            stunting
+            (being too short for one's age).
+
+          </li>
+          <li>
+            <a href="https://data.worldbank.org/indicator/SH.STA.MALN.ZS">
+              Proportion Underweight:</a> This represents the percentage of
+            children
+            being underweight (having low weight-for-age in children).
+            learn more about proportion of underweight children as an indicator
+            here</a>
+        </li>
+        <li>
+          <a
+            href="https://www.who.int/data/gho/indicator-metadata-registry/imr-details/302">
+            Prevalence of Wasting:</a> This represents the percentage of
+          children
+          being wasted (being dangerously thin for one's height).
+        </li>
+      </ul>
+    </div>
+
+  </div>
+  <div class="selectContainer" width="200" style="margin-top:20px; margin-bottom: 20px;">
+    <label for="dropdown">World GDP Map: select a year with the dropdown</label>
+    <select id="dropdown"></select>
+  </div>
+  <div class="mainContainer">
+    <div class="mapSVG">
+      <svg id="map" width="1000" height="750">
+        <pattern id="diagonalHatch" patternUnits="userSpaceOnUse" width="4"
+          height="4">
+          <path d="M-1,1 l2,-2
+            M0,4 l4,-4
+            M3,5 l2,-2"
+            style="stroke:darkblue; stroke-width:1.5" />
+          </pattern>
+        </svg>
+      </div>
+      <div class="lineChartSVG">
+        <svg id="lineChart" width="400" height="400" , margin="20"></svg>
+      </div>
+    </div>
+    <script>
+      const svg = d3.select('svg#map');
+      const width = svg.attr('width');
+      const height = svg.attr('height');
+
+      const margin = { top: 120, right: 20, bottom: 100, left: 20 };
+      const viewport = svg
+        .append('g')
+        .attr('transform', 'translate(' + margin.left + ',' + margin.top + ')');
+
+      const requestData = async function () {
+        let data = await d3.json('data.json');
+
+        var countries = topojson.feature(
+          data,
+          data.objects.countries1
+        ).features;
+
+        /*
+                var projection = d3.geoMercator()
+                    .fitSize([mapWidth, mapHeight], {type:"FeatureCollection", features: countries})
+                    */
+
+        var projection = d3.geoNaturalEarth1();
+        var path = d3.geoPath().projection(projection);
+
+        const years = [
+          2000, 2001, 2002, 2003, 2005, 2006, 2007, 2008, 2009, 2010,
+          2012, 2013, 2014, 2015, 2016, 2017, 2018, 2019, 2021,
+        ];
+        
+        d3.select('#dropdown')
+          .selectAll('yearoptions')
+          .data(years)
+          .enter()
+          .append('option')
+          .text((d) => d)
+          .attr('value', (d) => d)
+          .property('selected', (d) => d === 2021);
+
+        // check whether the country has a hunger index, return the latest hunger index or 0 if global hunger is null
+
+        var gdp = d3.map(
+          data.objects.countries1.geometries,
+          (d) => d.properties.gdp?.[2022]
+        );
+
+      const colorScale = d3.scaleThreshold()
+        .domain([10, 50, 100, 200, 1000, 2000, 5000, 10000])
+        .range(d3.schemeYlGnBu[9]);
+
+        
+        // Instantiating the tooltip width and height variable to be used later
+        var tooltipWidth = 170;
+        var tooltipHeight = 160;
+
+        var tooltip2Width = 500;
+        var tooltip2Height = 110;
+
+        // create the sphere background for the map
+        viewport
+          .append('path')
+          .attr('d', path({ type: 'Sphere' }))
+          .attr('fill', '#f0f8ff')
+          .attr('stroke', '#cccccc')
+          .style('stroke-width', '2px');
+
+        // add graticule for the map
+        let graticule = d3.geoGraticule10();
+        viewport
+          .append('path')
+          .attr('class', 'graticule')
+          .attr('d', path(graticule))
+          .attr('fill', 'none')
+          .attr('stroke', '#a3ceef')
+          .attr('stroke-width', '1px')
+          .attr('opacity', 1);
+
+        // draw the countries and apply colors based on hunger index
+        viewport
+          .selectAll('path.country')
+          .data(countries)
+          .join('path')
+          .attr('class', 'country')
+          .attr('d', path)
+          .attr('fill', function (d) {
+            if (d.properties.gdp) {
+              if (d.properties.gdp[2021]) {
+                return colorScale(d.properties.gdp[2021]);
+              } else {
+                return 'url(#diagonalHatch)';
+              }
+            } else {
+              return 'url(#diagonalHatch)';
+            }
+          })
+          .attr('stroke', '#bbbbbb')
+          .attr('stroke-width', '0.5')
+          .on('mouseover', mouseEntersCountry)
+          .on('mouseout', mouseLeavesCountry);
+
+        function update(selectedGroup) {
+          viewport.selectAll('path.country').attr('fill', function (d) {
+            if (d.properties.gdp) {
+              if (d.properties.gdp[selectedGroup]) {
+                return colorScale(d.properties.gdp[selectedGroup]);
+              } else {
+                return 'url(#diagonalHatch)';
+              }
+            } else {
+              return 'url(#diagonalHatch)';
+            }
+          });
+        }
+
+        d3.select('#dropdown').on('change', function (d) {
+          // recover the option that has been chosen
+          var selectedOption = d3.select(this).property('value');
+          // run the updateChart function with this selected option
+          update(selectedOption);
+        });
+
+        let legendArea = svg.append("g").attr("id", "legend")
+          .attr("transform", `translate(${3*margin.left},${0})`);
+      
+        legendArea.append("rect")
+          .style("fill", "#fff")
+          .style("stroke", "#a3ceef")
+          .attr("x", 0)
+          .attr("y", 0)
+          .attr("height", 100)
+          .attr("width", 870);
+
+        legendArea.append("text")
+          .text("Gross Domestic Product (in Billions of Dollars)")
+          .attr("id", "legendlabel")
+          .attr("transform", "translate(20,30)");
+            
+        legendArea.append("g")
+          .attr("class", "legendQuant")
+          .attr("transform", "translate(20,50)");
+
+        var legend = d3.legendColor()
+          .orient('horizontal')
+          .shapeWidth(90)
+          .labelFormat(d3.format(".0f"))
+          .labels(d3.legendHelpers.thresholdLabels)
+          .scale(colorScale);
+      
+        legendArea.select(".legendQuant").call(legend);
+        
+        // Adding the tooltip that "sticks" to the right side of a country
+
+        let tooltip = viewport
+          .append('g')
+          .attr('class', 'tooltip')
+          .attr('visibility', 'hidden');
+
+        let tooltip2 = viewport
+          .append('g')
+          .attr('class', 'tooltip')
+          .attr('visibility', 'hidden');
+
+        tooltip
+          .append('rect')
+          .attr('id', 'tooltipBackground')
+          .attr('fill', 'black')
+          .attr('opacity', 0.9)
+          .attr('x', 0)
+          .attr('y', 0)
+          .attr('width', tooltipWidth)
+          .attr('height', tooltipHeight);
+
+        tooltip2
+          .append('rect')
+          .attr('id', 'tooltipBackground')
+          .attr('fill', 'black')
+          .attr('opacity', 0.9)
+          .attr('x', 0)
+          .attr('y', 0)
+          .attr('width', tooltip2Width)
+          .attr('height', tooltip2Height);
+
+        // Insert the text that shows the name of the country
+        let txtOne = tooltip
+          .append('text')
+          .text('United States')
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 15);
+
+        // Insert the text that shows the GDP for the first available year
+        let txtTwo = tooltip
+          .append('text')
+          // .text("first year")
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 35);
+
+        // Insert the text that shows the GDP for the second available year
+        let txtThree = tooltip
+          .append('text')
+          // .text("second year")
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 55);
+
+        // Insert the text that shows the GDP for the third available year
+        let txtFour = tooltip
+          .append('text')
+          // .text("third year")
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 75);
+
+        // Insert the text that shows the GDP for the fourth available year
+        let txtFive = tooltip
+          .append('text')
+          // .text("fourth year")
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 95);
+
+        // Insert the text that shows the GDP for the fifth available year
+        let txtSix = tooltip
+          .append('text')
+          // .text("fifth year")
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 115);
+
+        // Insert the text that shows the GDP for the fifth available year
+        let txtSeven = tooltip
+          .append('text')
+          .text('(in Billions)')
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 135);
+
+        let global_hunger = tooltip2
+          .append('text')
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 15);
+
+        // Insert the text for stunted growth
+        let stunted_growth = tooltip2
+          .append('text')
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 35);
+
+        let underweight = tooltip2
+          .append('text')
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 55);
+
+        let waste = tooltip2
+          .append('text')
+          .attr('fill', 'white')
+          .attr('text-anchor', 'start')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', 15)
+          .attr('y', 75);
+
+        // Creating a fixed Line Chart next to the first SVG, in a separate SVG element
+
+        let lineChart = d3.select('#lineChart').attr('visibility', 'hidden');
+
+        // Getting the width and the height of the SVG element that the line chart is going to live in
+        let lineChartSVGWidth = lineChart.attr('width');
+        let lineChartSVGHeight = lineChart.attr('height');
+
+        let lineChartMargin = { top: 50, right: 20, bottom: 60, left: 60 };
+
+        // Getting the width and the height of the chartArea in which the line chart is going to live in
+        let lineChartAreaWidth =
+          lineChartSVGWidth - lineChartMargin.left - lineChartMargin.right;
+        let lineChartAreaHeight =
+          lineChartSVGHeight - lineChartMargin.top - lineChartMargin.bottom;
+
+        let annotations = lineChart.append('g').attr('id', 'annotations');
+        let chartArea = lineChart
+          .append('g')
+          .attr('id', 'points')
+          .attr(
+            'transform',
+            `translate(${lineChartMargin.left},${lineChartMargin.top})`
+          );
+        let lineChartTitle = lineChart
+          .append('text')
+          .attr('class','title')
+          .attr('fill', 'black')
+          .attr('text-anchor', 'middle')
+          .attr('alignment-baseline', 'hanging')
+          .attr('x', lineChartSVGWidth / 2 + 20)
+          .attr('y', 0);
+
+        // Creating the scales, axes, and grid-lines for the Line Chart
+
+        var minMaxGDP = [];
+        var allCountryAllYearsGDP = [];
+
+        // Getting the Min and Max GDP
+        countries.forEach(function (country) {
+          const allGDP = country['properties']?.['gdp'];
+          if (allGDP != null && allGDP != undefined) {
+            for (const [key, value] of Object.entries(allGDP)) {
+              allCountryAllYearsGDP.push(value);
+            }
+          }
+        });
+        minMaxGDP = d3.extent(allCountryAllYearsGDP);
+        const xScale = d3
+          .scalePoint()
+          .domain([2000, 2005, 2010, 2015, 2020])
+          .range([0, lineChartAreaWidth]);
+        // const xScale = d3.scaleLinear().domain([1999, 2019]).range([0, lineChartAreaWidth])
+        let bottomAxis = d3.axisBottom(xScale);
+        let bottomGridlines = d3
+          .axisBottom(xScale)
+          .tickSize(-lineChartAreaHeight - 10)
+          .tickFormat('');
+
+        annotations
+          .append('g')
+          .attr('class', 'x axis')
+          .attr(
+            'transform',
+            `translate(${lineChartMargin.left},${
+              lineChartAreaHeight + lineChartMargin.top + 10
+            })`
+          )
+          .call(bottomAxis);
+
+        annotations
+          .append('g')
+          .attr('class', 'x gridlines')
+          .attr(
+            'transform',
+            `translate(${lineChartMargin.left},${
+              lineChartAreaHeight + lineChartMargin.top + 10
+            })`
+          )
+          .call(bottomGridlines);
+
+        const yScale = d3
+          .scaleLog()
+          .domain(minMaxGDP)
+          .range([lineChartAreaHeight, 0]);
+
+        let leftAxis = d3.axisLeft(yScale);
+        let leftGridlines = d3
+          .axisLeft(yScale)
+          .tickSize(-lineChartAreaWidth - 10)
+          .tickFormat('');
+
+        annotations
+          .append('g')
+          .attr('class', 'y axis')
+          .attr(
+            'transform',
+            `translate(${lineChartMargin.left - 10},${lineChartMargin.top})`
+          )
+          .call(leftAxis);
+
+        annotations
+          .append('g')
+          .attr('class', 'y gridlines')
+          .attr(
+            'transform',
+            `translate(${lineChartMargin.left - 10},${lineChartMargin.top})`
+          )
+          .call(leftGridlines);
+
+        function mouseEntersCountry() {
+          // Testing: When hovering of the countries, the countries' color changes
+          // // checking that mouseover is actually working
+          // console.log("hello world")
+
+          // let country = d3.select(this);
+
+          // console.log("countries: ", country)
+
+          // country.attr("fill", "#FFC0CB")
+
+          // country.attr("stoke-width", 10)
+          // 	.attr("stroke", "blue")
+
+          // ---------- Working with the tooltip; MouseOver ----------
+
+          // Selecting the country that the mouse is hovering over
+          let country = d3.select(this);
+
+          country.attr('stroke', 'orange').attr('stroke-width', 1); // highlighting country where mouse is on
+
+
+          let countryName =
+            country['_groups'][0][0]['__data__']['properties']['name'];
+
+          // Editing the Size of the ToolTip to fit Name of Country
+          
+          if (countryName.length > 11) {
+            d3.select('#tooltipBackground').style('width', 320);
+          } else if (countryName.length > 11 && countryName.length < 19) {
+            d3.select('#tooltipBackground').style('width', 235);
+          } else {
+            d3.select('#tooltipBackground').style('width', 180);
+          }
+
+          // moving the tooltip around so that it is close to the geographic location that the mouse is pointing to
+          let bounds = path.bounds(country.datum());
+
+          let xPos = bounds[0][0];
+          let yPos = bounds[1][1];
+
+          tooltip.attr('transform', `translate(${xPos},${yPos})`);
+
+          // Preventing the two tooltips from overlapping
+          tooltip2.attr('transform', `translate(${xPos},${yPos + 180})`);
+
+          // Tooltips on left of country instead of country instead of right so the rect doesnt get cut off
+          if (
+            countryName == 'Australia' ||
+            countryName == 'New Zealand' ||
+            countryName == 'Indonesia' ||
+            countryName == 'Vietnam' ||
+            countryName == 'Philippines' ||
+            countryName == 'Japan' ||
+            countryName == 'Papua New Guinea' ||
+            countryName == 'Thailand' ||
+            countryName == 'New Caledonia' ||
+            countryName == 'Malaysia' ||
+            countryName == 'Taiwan' ||
+            countryName == 'Solomon Islands' ||
+            countryName == 'Vanuatu' ||
+            countryName == 'South Korea' ||
+            countryName == "North Korea" ||
+            countryName == "Myanmar" ||
+            countryName == 'Laos' ||
+            countryName == 'East Timor' ||
+            countryName == 'Cambodia'
+          ) {
+            tooltip.attr('transform', `translate(${xPos - 300},${yPos})`);
+            tooltip2.attr(
+              'transform',
+              `translate(${xPos - 300},${yPos - 120})`
+            );
+            d3.select('#tooltipBackground').style('width', 200);
+          }
+
+          // Manually moving the tooltip to be closest to the country, Fiji oddly "wraps around" and was misplaced
+          if (countryName == "Fiji") {
+            tooltip.attr('transform', `translate(${xPos + 700},${yPos})`);
+            tooltip2.attr(
+              'transform',
+              `translate(${xPos + 700},${yPos - 120})`
+            );
+          }
+
+
+          // Adjusting the tooltips for certain countries where positioning isn't right
+
+          if (countryName == "Russia") {
+            tooltip.attr('transform', `translate(${xPos + 500},${yPos})`);
+            tooltip2.attr('transform', `translate(${xPos + 500},${yPos + 180})`)
+          }
+
+          if (
+            countryName == "Argentina" ||
+            countryName == "Chile"
+          ) {
+            tooltip.attr('transform', `translate(${xPos},${yPos - 395})`);
+            tooltip2.attr('transform', `translate(${xPos},${yPos - 225})`);
+          }
+
+          if ( 
+            countryName == "Falkland Islands" ||
+            countryName == "French Southern and Antarctic Lands"
+          ) {
+            tooltip.attr('transform', `translate(${xPos},${yPos - 295})`);
+            tooltip2.attr('transform', `translate(${xPos},${yPos - 125})`);
+          }
+
+          // Making the tooltip visible
+          tooltip.style('visibility', 'visible');
+
+          tooltip2.style('visibility', 'visible');
+
+          // nine = 1999, four = 2004, oNine = 2009, fourteen = 2014, nineteen = 2019
+          // reasoning behind picking the years 1999, 2004, 2009, 2014, and 2019 is because it shows the trend over 2 decades
+          let nine =
+            country['_groups'][0][0]['__data__']['properties']['gdp']?.[2000];
+          let four =
+            country['_groups'][0][0]['__data__']['properties']['gdp']?.[2005];
+          let oNine =
+            country['_groups'][0][0]['__data__']['properties']['gdp']?.[2010];
+          let fourteen =
+            country['_groups'][0][0]['__data__']['properties']['gdp']?.[2015];
+          let nineteen =
+            country['_groups'][0][0]['__data__']['properties']['gdp']?.[2020];
+
+          let currentSelectedYear = d3.select('#dropdown').property('value');
+          let stunt =
+            country['_groups'][0][0]['__data__']['properties']['stunt']?.[
+              currentSelectedYear
+            ];
+          let hunger =
+            country['_groups'][0][0]['__data__']['properties'][
+              'global_hunger'
+            ]?.[currentSelectedYear];
+          let und =
+            country['_groups'][0][0]['__data__']['properties']['underweight']?.[
+              currentSelectedYear
+            ];
+          let wasting =
+            country['_groups'][0][0]['__data__']['properties']['wasting']?.[
+              currentSelectedYear
+            ];
+
+          // If the GDP data does not exist for the country, we will display "Unknown instead of leaving it undefined"
+          // This is easier to deal with when we are displaying the information in the tooltip
+          if (nine === undefined) {
+            nine = 'Unknown';
+          }
+
+          if (four === undefined) {
+            four = 'Unknown';
+          }
+
+          if (oNine === undefined) {
+            oNine = 'Unknown';
+          }
+
+          if (fourteen === undefined) {
+            fourteen = 'Unknown';
+          }
+
+          if (nineteen === undefined) {
+            nineteen = 'Unknown';
+          }
+
+          if (stunt === undefined) {
+            stunt = 'Unknown';
+          }
+
+          if (global_hunger === undefined || global_hunger === null) {
+            global_hunger = 'Unknown';
+          }
+
+          if (und === undefined) {
+            und = 'Unknown';
+          }
+
+          if (waste === undefined) {
+            waste = 'Unknown';
+          }
+
+          // Text for tooltip one
+          txtOne.text('Country: ' + String(countryName));
+          txtTwo.text('2000 GDP: ' + String(nine));
+          txtThree.text('2005 GDP: ' + String(four));
+          txtFour.text('2010 GDP: ' + String(oNine));
+          txtFive.text('2015 GDP: ' + String(fourteen));
+          txtSix.text('2020 GDP: ' + String(nineteen));
+
+          //Text for tooltip two
+          const filterText = (text) => {
+            if (!text || text === 'Unknown') {
+              return 'Unknown';
+            }
+            return String(text.toFixed(3));
+          };
+
+          stunted_growth.text(
+            `${currentSelectedYear} Stunted Growth: ` + filterText(stunt)
+          );
+          global_hunger.text(
+            `${currentSelectedYear} Global Hunger Index: ` + filterText(hunger)
+          );
+          underweight.text(
+            `${currentSelectedYear} Proportion Underweight: ` + filterText(und)
+          );
+          waste.text(
+            `${currentSelectedYear} Prevalence of Wasting: ` +
+              filterText(wasting)
+          );
+
+          // Creating the data points for the line chart
+          // let gdpSubDataset = {}
+          // gdpSubDataset[1999] = nine
+          // gdpSubDataset[2004] = four
+          // gdpSubDataset[2009] = oNine
+          // gdpSubDataset[2014] = fourteen
+          // gdpSubDataset[2019] = nineteen
+
+          let gdpSubDataset = [];
+          if (nine != 'Unknown') {
+            gdpSubDataset.push({ year: 2000, gdp: nine });
+          }
+          if (four != 'Unknown') {
+            gdpSubDataset.push({ year: 2005, gdp: four });
+          }
+          if (oNine != 'Unknown') {
+            gdpSubDataset.push({ year: 2010, gdp: oNine });
+          }
+          if (fourteen != 'Unknown') {
+            gdpSubDataset.push({ year: 2015, gdp: fourteen });
+          }
+          if (nineteen != 'Unknown') {
+            gdpSubDataset.push({ year: 2020, gdp: nineteen });
+          }
+
+          if (gdpSubDataset.length != 0) {
+            lineChart.style('visibility', 'visible');
+          }
+          lineChartTitle.text(`GDP Over Time: ${countryName}`);
+
+          // -------------------- Code for Dynamically generating the line chart --------------------
+          var lineGen = d3
+            .area()
+            .x((d) => xScale(d.year))
+            .y0(lineChartAreaHeight)
+            .y1((d) => yScale(d.gdp))
+            .curve(d3.curveMonotoneX);
+
+          chartArea
+            .append('path')
+            .datum(gdpSubDataset)
+            .attr('class', 'line')
+            .style('fill', 'steelblue')
+            .style('stroke', 'steelblue')
+            .style('opacity', 0.5)
+            .style('stroke-width', 3)
+            .attr('d', (d) => lineGen(d));
+
+          chartArea
+            .selectAll('circle')
+            .data(gdpSubDataset)
+            .join('circle')
+            .attr('r', 3)
+            .attr('fill', 'steelblue')
+            .attr('cx', (d) => xScale(d.year))
+            .attr('cy', (d) => yScale(d.gdp));
+        }
+
+        function mouseLeavesCountry() {
+          // Testing: When hovering out of the countries, the countries' color change back
+          // // checking that mouseout is actually working
+
+          // console.log("helloWORLD")
+
+          // let country = d3.select(this);
+          // country.attr("fill", () => {
+
+          // 	if ( typeof(country["_groups"][0][0]["__data__"]["properties"]["global_hunger"]?.[2021]) === undefined ) {
+          // 		hunger_index = 0
+          // 	}
+          // 	else {
+          // 		hunger_index = country["_groups"][0][0]["__data__"]["properties"]["global_hunger"]?.[2021]
+          // 	}
+
+          // 	if ( hunger_index === 0 ) {
+          // 		return colorScale(0)
+          // 	}
+          // 	else {
+          // 		return colorScale(hunger_index)
+          // 	}
+          //}
+
+          // ---------- Working with the tooltip; MouseOut ----------
+          // Make the tooltip hidden when mouseout of the tooltip
+          lineChart.style('visibility', 'hidden');
+          tooltip.style('visibility', 'hidden');
+          let country = d3.select(this);
+          country.attr('stroke', '#bbbbbb').attr('stroke-width', '0.5');
+
+          tooltip2.style('visibility', 'hidden');
+
+          d3.select('path.line').remove();
+          d3.select('#lineChart').selectAll('circle').remove();
+        }
+      };
+
+      requestData();
+    </script>
+  </body>
+</html>
