@@ -1,0 +1,83 @@
+<html>
+    <head>
+        <script src="https://d3js.org/d3.v7.min.js"></script>
+        <style>
+            .gridlines line {
+                stroke: #bbb;
+            }
+            .gridlines .domain {
+                stroke: none;
+            }
+        </style>
+    </head>
+    <body>
+        <p id="p2">
+            A scatterplot of graphics processing units (GPUs) over the past 20 years 
+            <br>
+            <svg id="scatterplot" width=500 height=500></svg>
+            <script>
+                d3.json("chip_dataset.json").then((data) => {
+
+                    const svg = d3.select('svg#scatterplot');
+
+                    //define svg size and margins
+                    const width = svg.attr('width');
+                    const height = svg.attr('height');
+                    const margins = {top: 10, right: 10, bottom: 50, left:50};
+                    const chartWidth = width - margins.left - margins.right;
+                    const chartHeight = height - margins.top - margins.bottom;
+                    
+
+                    let chartArea = svg.append('g')
+                       .attr('transform',`translate(${margins.left},${margins.top})`);
+                    
+                    //create scales
+                    const releaseDayExtent = d3.extent(data, d => d['Release Day']);
+                    const xScale = d3.scaleLinear().domain(releaseDayExtent).range([0, chartWidth])
+
+                    const transistorsExtent = d3.extent(data, d => d['Transistors(million)'])
+                    const yScale = d3.scaleLog().domain(transistorsExtent).range([chartHeight, 0])
+                    
+                    // create y axis and gridlines
+                    let leftAxis = d3.axisLeft(yScale)
+                    svg.append('g')
+                        .attr('class', 'y axis')
+                        .attr('transform',`translate(${margins.left-10},${margins.top})`) 
+                        .call(leftAxis)
+                    
+                    let leftGridlines = d3.axisLeft(yScale).tickSize(-chartWidth-10).tickFormat('');
+                    svg.append('g')
+                        .attr('class', 'y gridlines')
+                        .attr('transform', `translate(${margins.left-10},${margins.top})`)
+                        .call(leftGridlines)
+                    
+                    // create x axis and gridlines
+                    let bottomAxis = d3.axisBottom(xScale)
+                    svg.append('g')
+                        .attr('class', 'x axis')
+                        .attr('transform',`translate(${margins.left},${chartHeight+margins.top+10})`) 
+                        .call(bottomAxis)
+                    
+                    let bottomGridlines = d3.axisBottom(xScale).tickSize(-chartHeight-10).tickFormat('');
+                    svg.append('g')
+                        .attr('class', 'x gridlines')
+                        .attr('transform', `translate(${margins.left},${chartHeight+margins.top+10})`)
+                        .call(bottomGridlines)
+                    
+                    // create circles
+                    data.forEach((d,i) => {
+                        svg.append('circle')
+                            .attr('cx', xScale(d['Release Day']) + margins.left)
+                            .attr('cy', yScale(d['Transistors(million)']) + margins.top)
+                            .attr('r', 3)
+                            .attr('opacity', 0.3)
+                            .attr('fill', 'darkblue')
+                            .attr('index', i)
+                    });
+
+                })
+            </script>
+
+
+    </body>
+</html>
