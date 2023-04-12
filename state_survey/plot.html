@@ -119,13 +119,15 @@
             let tooltip = map.append("g")
                              .attr("class","tooltip")
                              .attr("visibility","hidden");
+            
             tooltip.append("rect")
                    .attr("fill", "black")
                    .attr("opacity", 0.9)
                    .attr("x", -tooltipWidth / 2.0)
                    .attr("y", 0)
                    .attr("width",tooltipWidth)
-                   .attr("height",tooltipHeight)
+                   .attr("height",tooltipHeight);
+                   
             let txt = tooltip.append("text")
                              .attr("fill", "white")
                              .attr("text-anchor","middle")
