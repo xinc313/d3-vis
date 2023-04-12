@@ -3,7 +3,28 @@
     <head>
         <script src="https://d3js.org/d3.v7.min.js"></script>
         <script src="https://d3js.org/topojson.v3.min.js"></script>
+        
     </head>
+
+    <style>
+      .state {
+        fill: lightgrey;
+      }
+      .outline {
+        fill: none;
+        stroke: black;
+        stroke-width: 1px;
+      }
+      .graticule {
+          fill: none;
+          stroke: grey;
+          stroke-width: 1px;
+      }
+      .tooltip {
+          pointer-events: none;
+      }  
+    </style>
+
 
     <body>
         <p id="p1">
@@ -127,7 +148,7 @@
                    .attr("y", 0)
                    .attr("width",tooltipWidth)
                    .attr("height",tooltipHeight);
-                   
+
             let txt = tooltip.append("text")
                              .attr("fill", "white")
                              .attr("text-anchor","middle")
