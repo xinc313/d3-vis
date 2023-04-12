@@ -14,37 +14,11 @@
     </head>
     <body>
         <p>
-            A. 
-            <br>
-            Firtly, I found out that the price data has a dollar sign before the number. So, I convert the string price value to numerica value by removing the dollar sign.
-            The points data is also converted to numeric value to make the scatter plot.
-            <br>
-            Then, the dataset has lots of N/A's and empty values in the dataset. Filter is applied to ignore those items. Also, the wine that has a very low price and doesn't make sense is removed.
-            The rating score of the wine should also be in the range from 0 to 100, so wines that have score out of the range are filtered.
-        </p>
-        <p>
-            B.
-            <br>
-            When designing the scales for the x-axis and y-axis, I chose the log scale for price, and the power scale for points.
-            Those choices are made in order to make the data spreads out on the chart and easier to observe.
-            Specifically, the price range is from 10$ - 200$, but there are more data points when price is lower.
-            Therefore, a log scale is applied to prevent all data points clustered in a smaller part of the chart.
-            The price scale design choice has a similar rationale, so a exponent scale is used.
-            <br>
-            Besides, I use scale Ordinal here as state is a categorical data. this color scale makes us easier to see the difference. 
-        </p>
-        <p>
-            C.
-            <br>
-            The advantage of the jitter function is to prevent all the data points to stack together on a scatter plot. Jittering helps us to better visualize the data.
-            <br>
-            However, the size of the jitter needs to be clearly designed and doesn't affect much on the graph scale. If the random component is not well desiened, the jitter could disrupt the relationship between variables on the chart.
-        </p>
-        <p>
-            D.
-            <br>
-            Since there are many data points on the scatter plot, it is not visually readable for us to add label for all of them. Therefore, ths hover over tooltip helps audience to learn the details of a specific item on the plot.
-            I place the tooltip on the left corner of my plot since there are no data points there. The tooltip can be disturbing when it blocks other data points and the axes.
+            The dataset being visualized in this project is a collection of
+            wines, since the number of the data entries are large. When
+            designing the interactive scatter plot, some jittler functino is
+            added to make sure there's no exact overlapping points, and users
+            can easily tap on the dot to see the interaction.
         </p>
         <svg id="wines" width="800" height="500"></svg>
         <script>
@@ -181,6 +155,5 @@
 
             });
         </script>
-        
     </body>
 </html>
